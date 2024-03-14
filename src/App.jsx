@@ -13,6 +13,9 @@
       https://app.pluralsight.com/ilx/video-courses/clips/484af4ab-c2cc-4a89-beb1-b99d0e587620
    ======================================================
 Task: 
+  - see React Table Library
+       https://react-table-library.com/?path=/story/getting-started-installation--page
+
   - React Table with server-side Data
 
   - Featuring examples of server-side pagination, 
