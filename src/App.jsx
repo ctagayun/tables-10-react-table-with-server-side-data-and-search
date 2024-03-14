@@ -95,12 +95,6 @@ import {
 import { useSort, HeaderCellSort,
    } from '@table-library/react-table-library/sort';
 
-//Sometimes we want to use custom sort icon
-import MaterialButton from '@mui/material/Button';
-import UnfoldMoreOutlinedIcon from '@mui/icons-material/UnfoldMoreOutlined';
-import KeyboardArrowUpOutlinedIcon from '@mui/icons-material/KeyboardArrowUpOutlined';
-import KeyboardArrowDownOutlinedIcon from '@mui/icons-material/KeyboardArrowDownOutlined';
-
 const THEME = {
   BaseRow: `
     font-size: 14px;
@@ -126,6 +120,7 @@ const BASE_URL = 'http://hn.algolia.com/api/v1/search';
 const INITIAL_PARAMS = {
   search: 'react',
   filter: false,
+  page: 0,
 };
 
 
@@ -139,7 +134,7 @@ const App = () => {
   //the initial state.  //Table Library will render the Table component for the fetched list:
   
   //nodes: [] - means a list is renamed to "nodes"
-  const [data, setData] = React.useState({ nodes: [] });
+  const [data, setData] = React.useState({ nodes: [], totalPages: 0 });
 
   console.log("Nodes: " + data);
 
@@ -149,8 +144,18 @@ const App = () => {
   //because it depends on the new memoized function 
   //"fetchData"
 
+  //Pagination:
+  /*
+    Now, we are fetching the first page explicitly and, after the 
+    server-side data resolves, we store the number of available pages 
+    (here totalPages) in addition to the nodes in local state.
+
+    The next step is setup the pagination features. 
+    See const Pagination component
+  */
   const fetchData = React.useCallback(async (params) => {  
-    let url = `${BASE_URL}?query=${params.search}`;
+    //let url = `${BASE_URL}?query=${params.search}`;
+    let url = `${BASE_URL}?query=${params.search}&page=${params.page}`;
 
     if (params.filter) {
       url = `${url}&tags=ask_hn`;
@@ -158,7 +163,11 @@ const App = () => {
     const result = await axios.get(url);
   
     //Call state updater and update the state "nodes"
-    setData({ nodes: result.data.hits });
+    //we store the number of available pages 
+    //(here totalPages) in addition to the nodes in local state.
+    setData({ nodes: result.data.hits,
+              totalPages: result.data.nbPages,
+           });
 
     const myResult = JSON.stringify(result);
     console.log("Fetched the following data: " + myResult);
@@ -183,6 +192,7 @@ const App = () => {
         filter: INITIAL_PARAMS.filter, 
             //invoke fetch from useEffect. Extract the search
             //parm from INITIAL_PARAM object
+        page: INITIAL_PARAMS.page  
     });   
   }, [fetchData]);  
 
@@ -207,7 +217,6 @@ const App = () => {
         //callback function to notify us when there is 
         //change in search parameter
   });
- 
   
   //listeners
   //you may have noticed that we perform a request with 
@@ -221,17 +230,67 @@ const App = () => {
       () =>
         fetchData({
           search: state.search,
+          filter,
+          page: pagination.state.page,
         }),
       500
     );
   }
 
+
   // server-side filter
+  //With the addition of server side filter, both server-side operations 
+  //have been merged, because we can use both states, the filter and the 
+  //search state, in the callback functions when one of the states changes.
   const [filter, setFilter] = React.useState(INITIAL_PARAMS.filter);
 
   const handleFilter = (event) => {
     setFilter(event.target.checked);
   };
+
+  useCustom('filter', data, {
+    state: { filter },
+    onChange: onFilterChange,
+  });
+
+  function onFilterChange(action, state) {
+    fetchData({
+      search,
+      filter: state.filter,
+      page: pagination.state.page,
+    });
+  }
+
+  // server-side pagination
+  const pagination = usePagination(
+    data,
+    {
+      state: {
+        page: INITIAL_PARAMS.page,
+      },
+      onChange: onPaginationChange,
+    },
+    {
+      isServer: true,
+    }
+  );
+
+  function onPaginationChange(action, state) {
+    fetchData({
+      search,
+      filter,
+      page: state.page,
+    });
+  }
+  /* 
+    Because we are using the server flag, the data is not automatically 
+    client-side paginated by the Table component. Instead, we need to 
+    implement the server-side pagination logic ourselves inside the 
+    onChange callback function. Do not forget to merge the other features 
+    with the new pagination as well:
+  */
+
+
 
   //list is renamed to "nodes". Nodes is a property of data
   //Nodes are the items in our list. In this example
@@ -260,7 +319,7 @@ const App = () => {
            Only Ask HN
       </label> 
 
-      <Table data={data} theme={theme} > 
+      <Table data={data} theme={theme} pagination={pagination} > 
         {(tableList) => (
           <> 
           <Header>
