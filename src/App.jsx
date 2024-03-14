@@ -121,9 +121,11 @@ const THEME = {
 
 const BASE_URL = 'http://hn.algolia.com/api/v1/search';
 
-//Dictionary to be used in providing parameters to search query string
+//Dictionary K/V to be used in providing parameters to 
+//search query string
 const INITIAL_PARAMS = {
   search: 'react',
+  filter: false,
 };
 
 
@@ -133,30 +135,34 @@ const INITIAL_PARAMS = {
 const App = () => {
 
   //Setup a react sate called "data". Initial state nodes: 
-  //is set to empty list. set the nodes as an empty list as the initial state,
-  //and when the server-side data arrive, after a second or two, React 
-  //Table Library will render the Table component for the fetched list:
-
+  //is set to empty list. set the nodes as an empty list as 
+  //the initial state.  //Table Library will render the Table component for the fetched list:
+  
   //nodes: [] - means a list is renamed to "nodes"
   const [data, setData] = React.useState({ nodes: [] });
 
   console.log("Nodes: " + data);
 
   //A useCallBack() function hook creates a memoized function
-  //every time its dependency array changes as result 
+  //every time its dependency array changes. As result 
   //useEffect hook  fetchData() runs again  
   //because it depends on the new memoized function 
   //"fetchData"
 
-  const fetchData = React.useCallback(async (params) => { //B
-    const url = `${BASE_URL}?query=${params.search}`;
+  const fetchData = React.useCallback(async (params) => {  
+    let url = `${BASE_URL}?query=${params.search}`;
+
+    if (params.filter) {
+      url = `${url}&tags=ask_hn`;
+    }
     const result = await axios.get(url);
+  
+    //Call state updater and update the state "nodes"
+    setData({ nodes: result.data.hits });
 
     const myResult = JSON.stringify(result);
     console.log("Fetched the following data: " + myResult);
-    setData({ nodes: result.dataState.hits });
-    //const myData = JSON.stringify(data);
-    //console.log("Date from fetch: " + data);
+     
 
   }, []);
 
@@ -165,14 +171,23 @@ const App = () => {
   //    into a arrow function expression (A)
   // 2. Then wrapping this new function into React.useCallback (B)
   // 3. and invoking it in the useEffect hook (C):
+  //We wrapped the whole function using useCallBack hook (B)
+  //      useCallBack function hook creates a memoized function
+  //      every time its dependency array (E) changes as result 
+  //      useEffect hook  handleFetchStories() runs again (C)
+  //      because it depends on the new memoized function "handleFetchStories"
+
   React.useEffect(() => {   
     fetchData({
-        search: INITIAL_PARAMS.search,
+        search: INITIAL_PARAMS.search, 
+        filter: INITIAL_PARAMS.filter, 
+            //invoke fetch from useEffect. Extract the search
+            //parm from INITIAL_PARAM object
     });   
   }, [fetchData]);  
 
   //server-side search
-  const [search, setSearch] = React.useState(INITIAL_PARAMS.SEARCH);
+  const [search, setSearch] = React.useState(INITIAL_PARAMS.search);
 
   const handleSearch = (event) => {
     setSearch(event.target.value);
@@ -183,15 +198,18 @@ const App = () => {
   //do this using "useCustom" hook.
 
   //With the 'useCustom' hook, we can define a key for the 
-  //state (here search), a state object, and a callback 
+  //state ("search"), a state object ("data"), and a callback 
   //function which notifies us whenever the state object 
   //changes:
   useCustom('search', data, {
     state: { search },
-    onChange: onSearchChange, //callback function to notify us when there is change in search term
+    onChange: onSearchChange, 
+        //callback function to notify us when there is 
+        //change in search parameter
   });
  
-  //listener
+  
+  //listeners
   //you may have noticed that we perform a request with 
   //every keystroke made in the search field. We can 
   //debounce this with some JavaScript:
@@ -207,6 +225,13 @@ const App = () => {
       500
     );
   }
+
+  // server-side filter
+  const [filter, setFilter] = React.useState(INITIAL_PARAMS.filter);
+
+  const handleFilter = (event) => {
+    setFilter(event.target.checked);
+  };
 
   //list is renamed to "nodes". Nodes is a property of data
   //Nodes are the items in our list. In this example
@@ -225,6 +250,16 @@ const App = () => {
                onChange={handleSearch} />
       </label>
        
+      <label htmlFor="filter">
+        <input
+          id="filter"
+          type="checkbox"
+          checked={filter}
+          onChange={handleFilter}
+        />
+           Only Ask HN
+      </label> 
+
       <Table data={data} theme={theme} > 
         {(tableList) => (
           <> 
