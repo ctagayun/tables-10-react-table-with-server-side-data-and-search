@@ -355,7 +355,36 @@ const App = () => {
       )}
       </Table> 
 
-        </>
+      <div // UI to facilitate pagination
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span>Total Pages: {data.totalPages}</span>
+
+        <span>
+          Page:{' '}
+          {Array(data.totalPages)
+            .fill()
+            .map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                style={{
+                  fontWeight:
+                    pagination.state.page === index
+                      ? 'bold'
+                      : 'normal',
+                }}
+                onClick={() => pagination.fns.onSetPage(index)}
+              >
+                {index + 1}
+              </button>
+            ))}
+        </span>
+      </div>
+   </>
   );
 };
 
